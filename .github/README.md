@@ -47,6 +47,11 @@ lists every keyword and whether it works yet.
 
 It is developed and tested in [AppleWin](https://github.com/AppleWin/AppleWin).
 
+It also runs on [COBOL.OS](https://github.com/JohnSnape/cobol-os), a small
+ProDOS-compatible kernel written for it. COBOL.OS handles the ProDOS calls this
+system uses, on SmartPort devices only. It is published as a repository of its
+own; the build of COBOL SYSTEM for it is not published yet.
+
 ## Status
 
 **This is a work in progress, not a release.** No disk image is provided. To
