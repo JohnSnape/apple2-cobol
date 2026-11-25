@@ -1,0 +1,17 @@
+ IDENTIFICATION DIVISION.
+ PROGRAM-ID. MENUT.
+* ACCEPT FROM MENU (2026-11-11): MAIN.MNU, made by
+* mnutest.ps1 in FORMAT, centred.  Keys: X (refused,
+* a bell), q, then 2.  Expect M1 [Q] and M2 2.
+ DATA DIVISION.
+ WORKING-STORAGE SECTION.
+ 01  C   PIC X.
+ 01  N   PIC 9.
+ PROCEDURE DIVISION.
+ MAIN-PARA.
+     ACCEPT C FROM MENU "MAIN".
+     ACCEPT N FROM MENU "MAIN".
+     DISPLAY ERASE.
+     DISPLAY "M1 [" C "]".
+     DISPLAY "M2 " N.
+     STOP RUN.

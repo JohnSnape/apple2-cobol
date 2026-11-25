@@ -1,0 +1,126 @@
+*    WORDS - an amount in words, as on a cheque
+*                                         PROCS/WORDS.SNP
+*    Place it with SA-P, P)rocedure, twice: D)ata in
+*    WORKING-STORAGE, P)aragraphs at the end.
+*    MOVE the amount (to 9,999,999.99) to NW-AMOUNT,
+*      PERFORM NW-CONVERT
+*    and NW-WORDS holds it, upper case, for example
+*      ONE THOUSAND TWO HUNDRED THIRTY-FOUR AND 56/100
+*    Add DOLLARS, or a line of stars, if the form
+*    wants them.  The longest amount takes 89 places.
+*    The words are two tables, each a run of fixed-
+*    width FILLERs REDEFINED as an OCCURS - a table
+*    cannot have VALUEs of its own.
+*    Costs 27 of a program's 128 names and about
+*    330 of its 2,048 bytes of literals.
+*
+*    WORDS - data (PROCS/WORDS.SNP; the notes are there)
+ 01  NW-AMOUNT    PIC 9(7)V99.
+ 01  NW-WORDS     PIC X(100).
+ 01  NW-WT REDEFINES NW-WORDS.
+     05  NW-WC    PIC X OCCURS 100.
+ 01  NW-UV.
+     05  FILLER   PIC X(36)
+             VALUE "ONE      TWO      THREE    FOUR     ".
+     05  FILLER   PIC X(36)
+             VALUE "FIVE     SIX      SEVEN    EIGHT    ".
+     05  FILLER   PIC X(36)
+             VALUE "NINE     TEN      ELEVEN   TWELVE   ".
+     05  FILLER   PIC X(36)
+             VALUE "THIRTEEN FOURTEEN FIFTEEN  SIXTEEN  ".
+     05  FILLER   PIC X(27)
+             VALUE "SEVENTEENEIGHTEEN NINETEEN ".
+ 01  NW-US REDEFINES NW-UV.
+     05  NW-UNIT  PIC X(9) OCCURS 19.
+ 01  NW-TV.
+     05  FILLER   PIC X(28)
+             VALUE "TWENTY THIRTY FORTY  FIFTY  ".
+     05  FILLER   PIC X(28)
+             VALUE "SIXTY  SEVENTYEIGHTY NINETY ".
+ 01  NW-TS REDEFINES NW-TV.
+     05  NW-TEN   PIC X(7) OCCURS 8.
+ 01  NW-WORD      PIC X(9).
+ 01  NW-WK REDEFINES NW-WORD.
+     05  NW-WKC   PIC X OCCURS 9.
+ 01  NW-CW.
+     05  NW-CW-N  PIC XX.
+     05  FILLER   PIC X(4) VALUE "/100".
+ 77  NW-INT       PIC 9(7).
+ 77  NW-CENTS     PIC 99.
+ 77  NW-GRP       PIC 999.
+ 77  NW-H         PIC 9.
+ 77  NW-R         PIC 99.
+ 77  NW-T         PIC 9.
+ 77  NW-O         PIC 9.
+ 77  NW-POS       PIC 999.
+ 77  NW-K         PIC 99.
+*
+*    WORDS - the paragraphs
+ NW-CONVERT.
+*    millions, thousands and units are each a group
+*    of three digits said the same way
+     MOVE SPACES TO NW-WORDS.
+     MOVE 1 TO NW-POS.
+     MOVE NW-AMOUNT TO NW-INT.
+     COMPUTE NW-CENTS = (NW-AMOUNT - NW-INT) * 100.
+     IF NW-INT = 0
+         MOVE "ZERO" TO NW-WORD
+         PERFORM NW-ADD-WORD
+     END-IF.
+     DIVIDE NW-INT BY 1000000 GIVING NW-GRP REMAINDER NW-INT.
+     IF NW-GRP > 0
+         PERFORM NW-GROUP
+         MOVE "MILLION" TO NW-WORD
+         PERFORM NW-ADD-WORD
+     END-IF.
+     DIVIDE NW-INT BY 1000 GIVING NW-GRP REMAINDER NW-INT.
+     IF NW-GRP > 0
+         PERFORM NW-GROUP
+         MOVE "THOUSAND" TO NW-WORD
+         PERFORM NW-ADD-WORD
+     END-IF.
+     MOVE NW-INT TO NW-GRP.
+     IF NW-GRP > 0
+         PERFORM NW-GROUP
+     END-IF.
+     MOVE "AND" TO NW-WORD.
+     PERFORM NW-ADD-WORD.
+     MOVE NW-CENTS TO NW-CW-N.
+     MOVE NW-CW TO NW-WORD.
+     PERFORM NW-ADD-WORD.
+ NW-GROUP.
+*    NW-GRP, 1 to 999
+     DIVIDE NW-GRP BY 100 GIVING NW-H REMAINDER NW-R.
+     IF NW-H > 0
+         MOVE NW-UNIT(NW-H) TO NW-WORD
+         PERFORM NW-ADD-WORD
+         MOVE "HUNDRED" TO NW-WORD
+         PERFORM NW-ADD-WORD
+     END-IF.
+     IF NW-R > 0 AND NW-R < 20
+         MOVE NW-UNIT(NW-R) TO NW-WORD
+         PERFORM NW-ADD-WORD
+     END-IF.
+     IF NW-R > 19
+         DIVIDE NW-R BY 10 GIVING NW-T REMAINDER NW-O
+         SUBTRACT 1 FROM NW-T
+         MOVE NW-TEN(NW-T) TO NW-WORD
+         PERFORM NW-ADD-WORD
+         IF NW-O > 0
+*            TWENTY-ONE: the hyphen takes the space
+             SUBTRACT 1 FROM NW-POS
+             MOVE "-" TO NW-WC(NW-POS)
+             ADD 1 TO NW-POS
+             MOVE NW-UNIT(NW-O) TO NW-WORD
+             PERFORM NW-ADD-WORD
+         END-IF
+     END-IF.
+ NW-ADD-WORD.
+*    NW-WORD onto the end of NW-WORDS, then a space
+     PERFORM VARYING NW-K FROM 1 BY 1 UNTIL NW-K > 9
+         IF NW-WKC(NW-K) NOT = SPACE
+             MOVE NW-WKC(NW-K) TO NW-WC(NW-POS)
+             ADD 1 TO NW-POS
+         END-IF
+     END-PERFORM.
+     ADD 1 TO NW-POS.

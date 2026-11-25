@@ -1,0 +1,665 @@
+========================================================================
+ COBOL.SYSTEM - MEMORY MAP                      (updated 2026-11-11)
+========================================================================
+ THE MAP AS IT IS, STAGE BY STAGE (2026-11-11)
+ Taken from the assembled end addresses (check.js) and the equates, not
+ from the older text further down.  WHERE THE OLDER TEXT DISAGREES WITH
+ THIS SECTION, THIS SECTION IS RIGHT: the band below $8000 was opened
+ to overlays on 2026-11-08, the library shrank to 12K the same day, the
+ literal pool moved twice and Utilities left COBOL.SYSTEM on 2026-11-11.
+
+ ALWAYS THE SAME
+ $0000-$01FF  zero page, stack
+ $0200-$02FF  BMBUF, the bank mover's staging page
+ $0300-$033F  BMENTRY, in main and in every aux bank
+ $0400-$07FF  text page 1
+ $0800-$0BFF  text page 2 (the compiler borrows all of it for OBDESC,
+              128 descriptors of 8 bytes, since 2026-11-11)
+ $0C00-$1FFF  the data region: variables and buffers; CATBLK $1000,
+              DCTBUF $1200, CSHADOW $1500-$1C7F, OVLWORK $1C80,
+              CMPXFR $1F00.  COBOL.SETTINGS is staged at $1000-$1287
+              while it is read (boot) or written (Utilities)
+ $2000-$2871  COBOL.SYSTEM - TKNAME $2003, the UTIL entries $2013
+              (XTOSYS) and $2016 (XTOWRK); 1.9K free to $2FFF
+ $3000-$5FE9  COBOL.LIB, jump table at $3000 (slot 107 PXSVC, the
+              prefixes; slot 108 SYMSVC, the compiler's symbol table,
+              2026-11-11); 22 bytes free to $5FFF (Merlin32's object,
+              2026-11-20, after FIXLIST A20) - new runtime code
+              goes on the aux card
+ $B000-$BBFF  three ProDOS file buffers (the compiler's literal pool
+              is $B400-$BBFF during a compile)
+ $BC00-$BCFF  FNBUF1, FNBUF2
+ $BD00-$BD28  ERRBUF
+ $BE00-$BE3F  SYSPFX, */ - the boot prefix (2026-11-11)
+ $BE40-$BE7F  WRKPFX, 0/ parked while LOADF opens a system file
+ $BE80-$BED0  CPYBUF, a COPY book's line as it is read (compiling)
+ $BED1-$BEFF  free
+ $BF00        ProDOS global page
+ aux LC $D000-$E7A6  COBOL.AUX (bank 2): BCD, PICTURE, ERRMSG, PREFIX,
+              and SYMAUX above $E000 with the symbol table's kind/
+              value/chain arrays (2026-11-11); 4K free to $F7FF
+ aux LC bank 1 $D000-$DEFF  the symbol table's names while compiling,
+              128 x 30 (SYMAUX.S)
+ aux LC $F800-$FA7F  the prefix table, */ and 1/-9/, 64 bytes each
+ aux 64K and RamWorks banks  source lines and records, $0C00 up; while
+              compiling, a COPY book's lines in the records after the
+              program's (NSRC up), one book at a time
+ aux bank 0 $AC00-$BEFF  while compiling: the p-code (CODAUX, 4,864
+              bytes, 2026-11-22) - above the 512 source records; while
+              running: QUERY's cursor
+
+ THE OVERLAY BAND, $6000-$AFFF - one tool at a time
+ menu         empty
+ EDIT / VIEW  code $6000-$8775, line ring $9800-$ABFF, HDRBUF/PFXBUF/
+              SHFBUF/NAMBUF at $AC00
+ FORMAT       code $8000-$AE96 (362 bytes free); a menu's lines at
+              $6000 (22 x 80) and its file image at $7000 (FMTMNU)
+ QUERY        code $8000-$9179
+ REPORT       code $6000-$7FC9, RPTHDR $97E0, RPTENT $9800-$A7FF
+ COMPILE1     code $6000-$80F4 (2026-11-22)
+ COMPILE2     code $6000-$9BBB (2026-11-22; may run to $A4FF since the .MNU for
+              ACCEPT FROM MENU is streamed through CPYBUF, 2026-11-11;
+              2.3K free), p-code being built in AUX $AC00-$BEFF
+              (CODAUX, 4,864 bytes, since 2026-11-22; it was OBCODE
+              $A500-$AFFF in main), $A500-$AFFF the staging area
+              CODSTG; OBDESC $0800-$0BFF, the
+              literal pool $B400-$BBFF; the symbol table in the aux
+              card (no longer $1000-$13FF)
+ RUN          VM $6000-$7B8A (1,141 bytes free to $7FFF), the object and
+              its WORKING-STORAGE $8000-$AFFF - 12,288 bytes since
+              2026-11-22 (was $9200-$AFFF, 7,680)
+ UTILITIES    $A000-$AADA (the UTILITIES file); COPY streams through
+              $6000-$9FFF
+ a turnkey disk  as RUN; COBOL.SYSTEM at $2000 starts the program
+
+========================================================================
+ 128K Apple IIe, 65C02, ProDOS 8, 80-column.  "us" = our system.
+ This file is the single authority on where things live.  Where a
+ comment in a source file disagrees with it, this file is right and the
+ comment is stale - say so and fix the comment.
+
+ THE FOUR DECISIONS THIS MAP RESTS ON
+  1. No graphics anywhere in this system, so all of low memory above
+     the two text pages is ours.
+  2. COBOL.SYSTEM loads at $2000 and STAYS there.  No relocation, no
+     two-phase boot, no copy loop.
+  3. The shared runtime is a FILE - COBOL.LIB, loaded to $3000 by
+     every program that runs - not a block that tries to survive a
+     QUIT.
+  4. An overlay is a subroutine: JSR $8000, RTS back to the menu.
+     ProDOS 8 has no QUIT-back-to-caller, so there is no chaining.
+
+ Both text pages are driven by TEXTDRV; 80STORE is OFF system-wide.
+
+------------------------------------------------------------------------
+ MAIN MEMORY - regions
+------------------------------------------------------------------------
+ $0000-$00FF  mixed     Zero page (see ZP breakdown below)
+ $0100-$01FF  CPU       6502 hardware stack.  CHK128 also runs its
+                        test from here - code at $2000 would bank
+                        itself out when aux is switched in.
+ $0200-$02FF  monitor   GETLN input-line buffer during startup;
+                        afterwards the staging buffer every bank move
+                        passes through (BMBUF).
+ $0300-$033F  us        BMENTRY - the page mover, installed here in
+                        MAIN and in EVERY auxiliary bank by BMINIT.
+                        Identical in all of them: RAMRD redirects
+                        instruction fetch as well as data, so the
+                        instruction after the switch is fetched from
+                        the bank just selected.  Do not put anything
+                        else at $0300.
+ $0340-$03FF  mon/us    scratch
+ $0400-$07FF  video     TEXT PAGE 1  (80-col: aux=even, main=odd cols)
+ $0800-$0BFF  video     TEXT PAGE 2  (80-col: aux=even, main=odd cols)
+                        Unsupported by firmware; ours alone.
+ $0C00-$1FFF  us        THE DATA REGION (5K).  Variables, buffers and
+                        overlay work space.  NEVER LOADED - it is
+                        addresses, not a file.  Nothing here appears
+                        in COBOL.LIB.
+                        $0C00-$0C7F  BANKTBL, up to 128 bank numbers
+                        $0C80-$0C8F  NUMFMT's NFVAL and NFBUF
+                        $0C90-$0CA8  the query engine's parameters
+                          (QSRC..QRES)
+                        $0CA9-$0CAC  the Apple command keys: KEYMOD,
+                          KEYCMD, KEYTERM, KEYCHAR.  The last two are
+                          adjacent because together they ARE the COBOL
+                          CRT STATUS item - two ASCII characters, the
+                          way FILE STATUS is two.  See KEYS.md.
+                          $0CAD-$0CBF still free.
+                        $0CC0-$0CFF  public variables
+                        $0D00-$0D4F  ROWBUF, one screen row of 80
+                          screen codes - the source PUTROW blits
+                          from.  At a fixed address so the blit can
+                          reach it with absolute,X and keep Y for
+                          the screen.
+                        $0D50-$0D9F  PICTURE's PICBUF, PNBUF, PFBUF
+                        $0DA0-$0DFB  the query engine: QFBUF a fetched
+                          field, QLBUF a normalised literal, QSPEC the
+                          sort spec
+                        $0E00-$0E4F  CATALOG's path and filter
+                        $0E50-$0E7F  RECMAN: two file control
+                          blocks of sixteen bytes, then the public
+                          parameters.  RMSTAT at $0E78 IS the COBOL
+                          FILE STATUS item - two ASCII characters,
+                          the way CRT STATUS is
+                        $0E80-$0EDF  QPROG, the predicate program.  96
+                          bytes, and the cap is real - see $16-$17
+                        $0F00-$0F8F  BCD's four digit arrays
+                        $0F90-$0FD7  the query engine's three cursor
+                          entries: QKBUF, QEBUF, QEBF2
+                        $1000-$11FF  CATBLK, the directory block.
+                          QRYLOAD borrows it to stage a .QRY - nothing
+                          is cataloguing while a query loads.
+                          From 2026-08-16 to 2026-11-11 the compiler
+                          borrowed $1000-$13FF for its symbol table
+                          (64 names of 16 bytes); nothing catalogues
+                          and no dictionary is loaded while a compile
+                          runs.  The table now lives on the aux
+                          language card (128 names of 30, SYMAUX.S).
+                        $1200-$14FF  DCTBUF, the loaded dictionary
+                        $1500-$1C7F  CSHADOW, CONSOLE's shadow screen
+                          (24 rows of 80, in the screen's own split
+                          shape, so a scroll is two block copies a row)
+                        $1C80-$1EFF  OVLWORK (640 bytes): work space
+                          for whichever overlay is resident - EDIT's
+                          disk staging buffer, REPORT's export staging,
+                          the compiler's LEXBUF and LEXNAME - and later
+                          PICTURE, RECMAN and SCRINP.  Only one overlay
+                          is ever in memory, so they share it.  EDIT's
+                          line ring is NOT here: 52 lines is over 4K,
+                          so it lives up in the band.
+                        $1F00-$1FFF  CMPXFR (256 bytes): state that
+                          OUTLIVES an overlay.  The opposite of the
+                          page above it, and the only thing that uses
+                          it is the compiler, which since 2026-08-16 is
+                          TWO overlays and one compile.
+                          COMPILE1 and COMPILE2 both PUT CMPVAR, but
+                          they are different sizes, so anything CMPVAR
+                          declares with DS lands at a different address
+                          in each - fine for scratch, fatal for a
+                          handover.  Eighteen bytes are EQUated here
+                          instead, at addresses neither pass can move:
+                          +0  CODLEN   code emitted so far
+                          +2  LITLEN   literal pool length
+                          +4  NITEMS   descriptors written
+                          +6  DSEG     data segment size
+                          +8  CMPERR   also read by SYSMENU, which
+                                       decides on it whether to load
+                                       pass two at all
+                          +9  NSYMS    symbols defined
+                          +10 NSRC     source lines in aux
+                          +12 LEXLN    where pass one stopped reading
+                          +14 QSTITM   the QUERY STATUS IS item
+                          +16 CMPPHS   which pass has run
+                          +17 NFILES   SELECTs declared
+                          $1F20 SRCXFR  the source handover
+                          $1F40 CMPFIL  the file table (2 x 16)
+                          $1F60 NOCC + OCCTAB  the table list, 8 x 4
+                                       (OCCURS: first, last, count,
+                                       stride), 2026-11-08
+                          EQUATES.S holds the layout, not CMPVAR.S,
+                          because SYSMENU needs CMPERR and does not
+                          PUT the compiler's variables.
+ $2000-$2FFF  us        SYS PROGRAM SLOT (4K).  ProDOS loads SYS files
+                        here.  COBOL.SYSTEM in the menu world; in the
+                        other, the launch stub alone - a few hundred
+                        bytes that BLOAD the library, the interpreter
+                        and the object, then JSR $8000.  You are
+                        always in exactly one world.
+ $3000-$5FFF  us        RUNTIME LIBRARY - COBOL.LIB, 12K since
+                        2026-11-08 (was 20K, to $7FFF).  BCD, PICTURE
+                        and ERRMSG moved to the aux language card; the
+                        library ends at $5FE9 and may NOT grow past
+                        $5FFF - new runtime code goes on the card.
+ $6000-$7FFF  us        THE LOW BAND'S FIRST 8K (LOWBASE = $6000 since
+                        2026-11-08, was $7000).  VM, COMPILE1,
+                        COMPILE2, EDIT and REPORT load here, not at
+                        $8000, through RUNLOW in SYSMENU.
+                        EDIT, FORMAT, QUERY and REPORT still load at
+                        $8000 and leave this page range alone.  BLOADed
+                        here by every program that runs.
+                        $3000-$30BF  jump table (FROZEN ABI, 64 slots)
+                        $30C0-$7FFF  library code
+                        The table rides at the front of its own code,
+                        so the whole thing is one contiguous file with
+                        one load address.
+                        Only the BASE is frozen.  Neither the top
+                        boundary nor the slot count is: growth goes on
+                        the END of the table, where an already-
+                        compiled object cannot notice it.  The surplus
+                        up here is reclaimable later.
+ $8000-$AFFF  us        OVERLAY BAND (12K) - one at a time:
+                        FORMAT / EDIT / QUERY / REPORT / VM /
+                        COMPILE1 / COMPILE2.
+                        EDIT lays it out like this:
+                        $8000-$97FF  code and variables
+                        $AC00-$ACDD  HDRBUF PFXBUF SHFBUF NAMBUF
+                          ETMPNB - addresses, not DS, since
+                          2026-11-08 (EDHIGH in EDIT.S)
+                        $9800-$ABFF  the line ring: 64 slots of 80
+                          bytes.  An ADDRESS, not a DS - 5120 bytes
+                          have no business inside a file that is
+                          loaded from a floppy every time the editor
+                          is called.  Line L is always in slot
+                          L AND 63, so the low byte of the line
+                          number IS the slot.
+                        Source lines themselves are records in
+                        AUXILIARY memory, one record a line, reached
+                        through AMGET/AMPUT - so a program may be
+                        longer than one bank.
+                        VM lays it out like this (from 2026-11-08 it
+                        starts at $7000, so read $7000 for $8000 here
+                        and add 4K to the spare):
+                        $8000-$91FF  the interpreter.  4,129 bytes
+                          with the QUERY verb and the file opcodes in,
+                          and a page of it is the dispatch table.
+                          479 spare
+                        $9200-$AFFF  the object file, then the data
+                          segment straight after it - 7.5K for both.
+                          The base MOVED UP 512 bytes on 2026-08-16:
+                          nothing in an object holds an address, and
+                          the compiler cannot build one bigger than
+                          4,096 anyway (512 descriptors + 512 pool +
+                          3,072 code), so the 8K was over-provisioned
+                          from the other end of the tool chain
+                        REPORT lays it out like this:
+                        $8000-$96FF  code and variables
+                        $97E0-$97FF  RPTHDR, the .RPT header
+                        $9800-$A7FF  RPTENT, 64 entries x 64 bytes
+                        COMPILE1 and COMPILE2 lay it out like this -
+                        their code now starts at $7000 (LOWBASE), with
+                        everything above unchanged -
+                        and they lay it out THE SAME - which is the
+                        whole reason two overlays can be one compile:
+                        $8000-$9FFF  code and variables (8,192).
+                          Pass one uses 5,209 of it, pass two 7,461
+                        $A000-$A1FF  OBDESC, the descriptor table
+                        $A200-$A3FF  OBLIT, the literal pool
+                        $A400-$AFFF  OBCODE, the p-code being built
+                        SYMTAB is NOT here - it is borrowed at $1000,
+                        above, which is what let the code band grow a
+                        kilobyte without shrinking OBCODE
+                        EVERY ONE OF THOSE FOUR IS ABOVE $9C00 and the
+                        overlay band's code ends at $9BFF, so pass two
+                        loads over pass one's CODE and finds pass
+                        one's WORK untouched.  Nothing is written to
+                        disk between the passes and nothing is copied.
+                        That is not luck: it is what separating code
+                        from data bought, one level up.
+                        The handover values that could NOT stay in the
+                        band are in CMPXFR at $1F00, above.
+ $B000-$BBFF  us        THREE ProDOS file buffers, 1024 bytes each,
+                        page-aligned: IOBUF $B000, IOBUF2 $B400,
+                        IOBUF3 $B800.  A buffer is 1K, NOT the 512
+                        bytes of the block it reads - and three of
+                        them means a program with two SELECTs can
+                        still list a directory to pick a file.
+                        A file buffer is ProDOS's private working
+                        space, not ours: READ and WRITE take a
+                        SEPARATE data address and count.  Nothing of
+                        ours is ever staged here.
+ $BC00-$BC7F  us        FNBUF1 - full pathname, prefix and all
+ $BC80-$BCFF  us        FNBUF2 - the same
+ $BD00-$BD28  us        ERRBUF - ERRMSG's text, copied down out of the
+                        aux language card where main code can read it
+ $BD29-$BEFF  us        free, for ProDOS-related work
+ $BF00-$BFFF  ProDOS    Global page: MLI $BF00, bitmap $BF58-$BF6F,
+                        DATE $BF90, TIME $BF92, MACHID $BF98, dev list.
+ $C000-$CFFF  hardware  soft switches, slot I/O, slot ROM.
+ $D000-$FFFF  ROM/PD    Applesoft+Monitor ROM (COUT $FDED, HOME $FC58,
+                        COUT1 $FDF0, ...); language-card RAM holds the
+                        ProDOS MLI.  Only $D000-$D0FF bank 2 is free.
+
+------------------------------------------------------------------------
+ THE PRODOS MEMORY BITMAP - why we ignore it
+------------------------------------------------------------------------
+ ProDOS tracks page usage at $BF58-$BF6F, and by default marks only
+ pages $00, $01, $04-$07 and $BF as used - so pages $08-$1F, holding
+ text page 2 and the data region, look free to it.
+
+ We do not care, and it is worth knowing exactly why: ProDOS never
+ chooses memory for us.  The MLI OPEN call takes the file buffer as a
+ PARAMETER - we pass DA IOBUF ourselves - so there is no allocator to
+ collide with.  The bitmap only matters when something else is doing
+ the choosing: BASIC.SYSTEM, a program selector, or ALLOC_INTERRUPT.
+ None of those are resident while a SYS program owns the machine.
+
+ Startup USED TO claim $08-$1F anyway (three $FF stores at $BF59-$BF5B),
+ on the grounds that six bytes to be honest about what we hold was worth
+ it.  CLAIM WAS REMOVED 2026-08-16, because it is worse than
+ unnecessary: ProDOS reads this map before it will write into a buffer
+ handed to it, and a page marked in use comes back $56, BAD BUFFER
+ ADDRESS.
+   Found in WRITER, the word processor that shares this tree's screen
+ driver and record layer: its GET_PREFIX buffer is at $1200 and the call
+ failed every time until the claim went.  The same trap was set here -
+ CATALOG reads the prefix into CATPATH at $0E00 - and CATALOG has never
+ been run, so it was waiting rather than known.
+   READ and WRITE are evidently not checked: EDIT's save streams through
+ STAGE at $1C80, inside the old claimed range, and was verified
+ byte-perfect on the machine.  It is the calls that hand ProDOS a buffer
+ to FILL that check.
+
+ The one exception is a test program BRUN from BASIC rather than run
+ as a SYS file.  PG2TEST and AXTEST are both of those; they write over
+ the Applesoft program area, which is harmless for a throwaway.
+
+------------------------------------------------------------------------
+ TWO WORLDS - the tools, and a running program
+------------------------------------------------------------------------
+ $0C00-$1FFF and $3000-$7FFF are IDENTICAL in both worlds: the data
+ region and the library never move.  Only $2000 and $8000 upward
+ differ, and you are never in both worlds at once.
+
+ AT THE MENU (tools)               RUNNING A COMPILED PROGRAM
+ $0C00-$1FFF data region           $0C00-$1FFF data region
+ $2000-$2FFF COBOL.SYSTEM          $2000-$2FFF the launch stub
+ $3000-$7FFF COBOL.LIB             $3000-$7FFF COBOL.LIB
+ $8000-$AFFF overlay: FORMAT /     $8000-$91FF VM, the interpreter
+             EDIT / QUERY /        $9200-$AFFF the object, then the
+             REPORT / VM /                     data segment
+             COMPILE1 / COMPILE2
+ $B000-$BBFF three file buffers    $B000-$BBFF three file buffers
+ $BC00-$BCFF two name buffers      $BC00-$BCFF two name buffers
+
+ The interpreter is an OVERLAY like any other, so running a compiled
+ program from the menu is a JSR that returns.  The standalone case
+ differs only in who does the loading: the stub at $2000 BLOADs the
+ library, the interpreter and the object to the same three addresses
+ the menu would have used, then JSRs $8000.  One set of addresses in
+ both worlds, which is what lets an object file contain no address of
+ its own.
+
+ A standalone compiled program is therefore one SYS file - a small
+ stub followed by its p-code - plus two shared files on the disk:
+ COBOL.LIB and the interpreter.  Nothing relocates and nothing is
+ overwritten, because the interpreter deliberately does NOT live at
+ $2000.
+
+ If 8K for object plus data ever binds, the answer is not to shrink
+ the interpreter.  In the standalone world there is no menu at $2000,
+ so the interpreter moves down there and the whole band becomes the
+ program's.  Same object file either way.
+
+ THE SECOND PLACE TO GET ROOM, and it is bigger: the library is 9,768
+ bytes of the 20K at $3000-$7FFF, so LIBEND sits around $562B and
+ $5700-$7FFF is about ten and a half kilobytes of main memory that
+ nothing uses.  Only the library's BASE is frozen, never its top - so
+ that surplus is reclaimable without invalidating a single compiled
+ object.  Between the two, a program can be given 22K contiguous
+ before anything has to be paged from anywhere.
+
+ WHAT NOT TO DO: page p-code in and out of a window from auxiliary
+ memory.  It was considered and rejected, and the reasons are worth
+ keeping because the idea is an attractive one.  A branch target is
+ an offset from the code base, so every branch, GOTO, PERFORM and
+ RET would need a which-page test; a PERFORM into another page swaps
+ it in, and the RET swaps the first back, so a loop over a paragraph
+ in a different page costs two AUXMOVEs an iteration - about 75ms
+ for a 4K window, or 75 seconds over a thousand iterations.  That is
+ not a corner case: PERFORM of a paragraph IS COBOL's control
+ structure.  And the data segment, which is written constantly,
+ would have nowhere to live.  Aux holds DATA, never code - decision
+ 7 - and the two wins above are free where this one is not.
+
+ THE LIBRARY NEVER MOVES.  Compiled p-code calls the runtime by
+ absolute address, so a floating base would mean BCDADD sat at $303C
+ in one program and $083C in another, and an object would only run
+ against the library it was compiled with.  The frozen table at $3000
+ is what makes a compiler able to emit a call at all.
+   When a program does not use text page 2, $0800-$0BFF is simply 1K
+ of free DATA - a buffer the runtime may claim.  That recovers the
+ memory without moving a single entry point.
+
+------------------------------------------------------------------------
+ LIBRARY BUDGET - $30C0-$7FFF is 20800 bytes
+------------------------------------------------------------------------
+ The first assembly of the library measured 5045 bytes for five
+ modules in the old 4608-byte region at $0C00 - 437 bytes over, with
+ seven modules still to write.  That is what forced this layout.
+
+ Moving the code up to $3000 and leaving the data down at $0C00-$1FFF
+ solves it outright:
+
+   TEXTDRV   ~700     built        RECMAN    ~600    to write
+   FILEIO    ~450     built        SCRSHOW   ~250    to move in
+   CATALOG   ~700     built        SCRINP    ~600    to move in
+   BCD      ~1500     built        CLASS     ~150    to write
+   BANKS     ~350     built        DATIME    ~100    to write
+   CONSOLE   ~500     built        ABORT     ~150    to write
+   DSCREEN   ~350     built        PRINTER   ~350    to write
+   AUXMEM    ~400     built                         ------
+   NUMFMT    ~200     built        to come    ~2200
+   PICTURE  ~1160     built
+                     ------
+   built    ~6310                  total     ~8510 of 20800
+
+ Comfortable, with every planned module in.  The two-file split -
+ COBOL.LIB plus a second COBOL.LI2 for programs that use the forms
+ engine - is no longer needed and has been dropped.
+
+ The buffers stopped counting entirely.  CATBLK's 512 bytes, BCD's
+ 144 bytes of digit arrays, CSHADOW's 1920, PICTURE's buffers - all
+ addresses in the data region now, costing nothing on disk and nothing
+ in the code budget.
+
+ LIBEND at the foot of LIB.S is the real number.  Read it after every
+ assembly; if it ever passes $8000 the library has collided with the
+ overlay band.
+
+------------------------------------------------------------------------
+ WHY THE LIBRARY IS A FILE
+------------------------------------------------------------------------
+ Not because anything needs to survive a QUIT - once we QUIT, our
+ system is on its way out and whatever the dispatcher clobbers on the
+ way is no longer ours.  The library is a file because that is what
+ makes a compiled program self-sufficient: it BLOADs COBOL.LIB to
+ $3000 exactly as the menu did, and gets exactly the runtime the menu
+ had, with no relinking and no copy of the library inside it.
+
+ One binary on disk, one set of addresses.  The jump table at $3000 is
+ the contract: a compiled object calls the runtime by address and
+ outlives any particular assembly of the library, so entries are
+ APPENDED and never reordered.
+
+------------------------------------------------------------------------
+ MAIN MEMORY - zero page (explicit)
+------------------------------------------------------------------------
+ $00-$01  ProDOS      off-limits
+ $02-$05  Zone G      dispatcher globals (persistent).
+                      FREE - its one tenant was RAMFLG, which went
+                      with the /RAM handling.  Zone kept reserved: it
+                      is the only zero page a program can count on
+                      surviving its own overlays.
+ $06-$07  Zone S ZPT1  general source/temp ptr  (STRPTR, DPTR)
+ $08-$09  Zone S ZPT2  general dest/temp ptr    (LPTR); also the
+                       caller's buffer pointer for GETLN80
+ $0A-$0B  Zone S ZPREC -> record buffer
+ $0C-$0D  Zone S ZPDICT-> loaded dictionary
+ $0E-$0F  Zone S ZPFLD -> field descriptor (FDPTR/FLDPTR/WPTR)
+ $10-$11  Zone S ZPSCR -> current screen line   (SCRPTR)
+ $12-$13  Zone S ZPNODE-> node/work record      (RECP/LBPTR)
+ $14      Zone S ZPCOLS screen width 40/80
+ $15      Zone S       FREE.  Was ZPPAGE, the text-page flag; that
+                       moved to SCRPAGE ($0CC4) in the library.  Zone
+                       S is caller-saved, so a flag that has to
+                       survive every JSR in the system could never
+                       live here.
+ $16-$17  Zone S ZPWORK general work ptr.  It was reserved for the
+                       predicate evaluator's program counter, and the
+                       predicate evaluator does not use it: zone S is
+                       caller-saved and the evaluator calls AXGET
+                       between every opcode, so the pointer would have
+                       been destroyed by the first comparison.  The
+                       program counter is a one-byte OFFSET into QPROG,
+                       indexed absolutely, which is why a predicate is
+                       capped at 96 bytes.  Same lesson as $15 above,
+                       learned twice.
+ $18-$1F  Zone S       free - more caller-saved temps
+ $20-$55  mon+PD      off-limits.  ProDOS uses $40-$4E;
+                      AUXMOVE uses $3C-$3F and $42-$43.
+ $56-$5F  free        unassigned
+ $60-$8F  Zone P      active-driver registers (persistent).  Under
+                      the interpreter this is the VM register file:
+                        $60 IP   instruction pointer
+                        $62 DP   data segment base
+                        $64 LP   literal pool base
+                        $66 DT   descriptor table base
+                        $68 RSP  PERFORM stack pointer
+                        $6C O1   source item address
+                        $6E O2   destination item address
+                        $70 PT   working pointer
+                        $72 JP   dispatch vector
+                        $73 ESP  expression stack pointer
+                        $74 CC   last compare result
+                        $75 EXC  exception flags
+                        $76 HLT  halt flag
+                      Under an overlay it is that overlay's hot
+                      state.  Only one is ever live, so they reuse
+                      it.  NO service touches this.
+ $90-$AF  Zone D      service-private scratch (BCD, record mgr,
+                      predicate, printer)
+ $B0-$EF  reserved    future services.  $FE/$FF held PRMESSAGE's
+                      inline-string pointer; that routine is gone.
+ $F0-$F3  Zone R      RNDSEED - 32-bit entropy counter, incremented
+                      by every key-wait loop in the system, exactly
+                      as the monitor's KEYIN ran RNDL/RNDH at
+                      $4E/$4F.  Written ONLY by those loops; read by
+                      anyone.  It is a seed, not a generator: it
+                      stands still whenever nobody is waiting for a
+                      key, so a PRNG must be seeded from it once and
+                      then stepped on its own.
+ $F4-$FF  reserved    future services
+
+ GOLDEN RULE: a service routine touches only Zone S (+ its own Zone D
+ slice), NEVER Zone P.  That lets the interpreter keep IP/SP/FP live
+ across the many service calls one opcode makes.
+
+ The library keeps ALL of its own state in the data region at $0CC0,
+ not in zero page, precisely so it obeys this rule from the outside.
+
+------------------------------------------------------------------------
+ AUXILIARY MEMORY
+------------------------------------------------------------------------
+ $0000-$01FF  aux       aux ZP/stack (only under ALTZP; we avoid it)
+ $0200-$03FF  aux       unused by us
+ $0400-$07FF  video     aux text page 1 (even columns)
+ $0800-$0BFF  video     aux text page 2 (even columns)
+ $0C00-$BEFF  us        DATA area (~45K a bank): source lines,
+                        dictionaries, record buffers, symbol tables,
+                        sort/query work, p-code program data.
+                        Reached via AUXMOVE $C311.  CODE NEVER RUNS
+                        HERE.
+                        RECORDS GROW UP FROM $0C00; THE QUERY CURSOR
+                        COMES DOWN FROM THE CEILING.  A cursor is
+                        QMAX entries of QESZ bytes ending at $BF00,
+                        so its base is $BF00 - QMAX*QESZ, and QRYINIT
+                        refuses to start if that would land on the
+                        records already in use.  On a plain 128K IIe
+                        there is one bank and the two really do share
+                        it.  This is a check, not an allocator - the
+                        allocator is still owed.
+ $BF00-$BFFF  reserved  top aux page - NOT available (upper bound is
+                        $BEFF, not $BFFF).
+ $C000-$CFFF  hardware  I/O (shared; not RAM)
+ $D000-$FFFF  aux LC    aux language card, RAM bank 2 + $E000-$FFFF.
+                        SINCE 2026-11-08: COBOL.AUX, library code that
+                        RUNS here - BCD, PICTURE, ERRMSG (AUXLC.S),
+                        $D000 up, ~4K used, must end below $FFFA.
+                        Copied in at boot by LOADAUX (SYSLOAD.S).
+                        Reached only through GATE.S in COBOL.LIB,
+                        which switches ALTZP + $C080 in and carries
+                        A/X/Y/P, ZPT1/ZPT2 and SP across.  Code here
+                        may not call ProDOS, the ROM or select a
+                        RamWorks bank; it lives in bank 0's card only.
+                        $D000 bank 1 holds the compiler's symbol
+                        names, 128 x 30, since 2026-11-11 (SYMAUX.S).
+
+ BANKS BEYOND THE FIRST
+ A plain 128K IIe has one auxiliary bank.  A RamWorks-style card has
+ up to 128, selected by writing the bank number to $C073.  FINDBNK
+ counts them; AUXMEM turns a record number into a bank and an address.
+ Every bank's usable space starts at $0C00, bank 0 included, so there
+ is one mapping and no special case - we give up the 2,560 bytes below
+ $0C00 in the upper banks to keep the arithmetic identical everywhere.
+
+ The geometry is chosen so the division is a shift: records per bank
+ is a power of two.  At 80 bytes a record, 512 records fill 40,960 of
+ a bank's 45,824 - and a 16-bit record number at 512 records a bank
+ reaches exactly 128 banks, so the two limits meet and neither wastes
+ the other.
+
+------------------------------------------------------------------------
+ THE 80STORE DECISION - read this before touching a soft switch
+------------------------------------------------------------------------
+ 80STORE is OFF for the life of the system.  This is the single fact
+ that makes text page 2 reachable, and it changes what two switches
+ mean:
+
+   80STORE ON  (the old SCREEN.S, and the IIe firmware):
+     $C054/$C055 select MAIN or AUX for the $0400-$07FF window.
+     The display page is stuck on page 1 - the switch that would
+     change it has been borrowed for banking.  This is why the IIe
+     firmware only ever offered one 80-column page.
+
+   80STORE OFF (TEXTDRV):
+     $C054/$C055 are the DISPLAY PAGE select again - PG1SEL/PG2SEL.
+     Banking moves to RAMRD/RAMWRT ($C002-$C005), which cover all of
+     $0200-$BFFF, so they reach page 2 at $0800-$0BFF as easily as
+     page 1.
+
+ Consequences, all of them load-bearing:
+   - Only TEXTDRV may touch $C002-$C005 or $C054/$C055.  MAINSW and
+     AUXSW no longer exist as equates so that stale code fails to
+     assemble instead of silently writing to the wrong bank - or
+     worse, flipping the display page in the middle of a character.
+   - Writes to aux are safe: RAMWRT does not affect instruction fetch,
+     because fetches are reads.  Every routine banks aux in for one
+     store and back out immediately.
+   - READS from aux are the dangerous direction: RAMRD redirects
+     instruction fetch too.  That is why the page mover exists at the
+     same address in every bank, and why everything else uses AUXMOVE
+     rather than raw RAMRD.
+   - Zero page and the stack follow ALTZP, not RAMWRT, so they stay in
+     main memory throughout.  That is why the driver can bank aux in
+     and still use (SCRPTR),Y.
+   - The monitor's COUT and GETLN are 40-column and page-1 only.  They
+     are usable at startup, before the driver takes over.  After that,
+     use PUTS and GETLN80.
+   - AUXMOVE needs 80STORE off, which is now always true.  Code that
+     used to turn it off and back on must no longer turn it back on.
+
+------------------------------------------------------------------------
+ CROSS-CUTTING NOTES
+------------------------------------------------------------------------
+ Cross-bank moves: firmware AUXMOVE $C311 shuttles data between main
+   and aux over $0000-$BFFF (we use $0C00-$BEFF).  Params: $3C/$3D =
+   src start, $3E/$3F = src END, inclusive - not a length;  $42/$43 =
+   dst start.
+   CARRY SET   = MAIN -> AUXILIARY
+   CARRY CLEAR = AUXILIARY -> MAIN
+   It reads the wrong way round and it fails quietly: the wrong carry
+   moves the right number of bytes in the wrong direction, so a read
+   leaves its buffer untouched and a write destroys the destination.
+   AXTEST found this the hard way - every bank read back as zero.
+   XFER $C314 is shelved (we run no code from aux).
+
+ VERIFIED: selecting a RamWorks bank at $C073 and then calling AUXMOVE
+   does reach that bank.  AXTEST wrote and read back all 128 banks on
+   an 8MB card - every one distinct.  Brown's 1986 warning that AUXMOVE
+   "does not work with the extra banks" means only that AUXMOVE has no
+   bank parameter of its own, not that selection fails to compose with
+   it.  That is what AUXMEM is built on.
+   The first AXTEST run said otherwise only because the carry was
+   backwards, so nothing was ever written.
+
+ ProDOS globals we touch: MLI $BF00, system bitmap $BF58-$BF6F,
+   DATE $BF90-$BF91, TIME $BF92-$BF93, MACHID $BF98.
+
+ Program startup, every time:
+   1. check for 128K (CHK128, from $0100) and a 65C02 (CHK65)
+   2. BLOAD COBOL.LIB to $3000
+   3. claim pages $08-$1F in the ProDOS bitmap
+   4. JSR INIT80 ($3000)
+   5. run
+========================================================================

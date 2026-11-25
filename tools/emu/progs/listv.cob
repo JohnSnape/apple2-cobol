@@ -1,0 +1,24 @@
+ IDENTIFICATION DIVISION.
+ PROGRAM-ID. LISTV.
+ DATA DIVISION.
+ WORKING-STORAGE SECTION.
+ 01  N   PIC 9(5)V99.
+ 01  T   PIC X(8).
+ 01  S   PIC XX VALUE "XY".
+ 01  G.
+     05  G1  PIC X(3).
+     05  G2  PIC X(3).
+ PROCEDURE DIVISION.
+ MAIN-PARA.
+     MOVE "123.45" TO T.
+     MOVE T TO N.
+     DISPLAY "A17A " N.
+     MOVE 42.5 TO N.
+     MOVE N TO T.
+     DISPLAY "A17B [" T "]".
+     MOVE "ABCDEF" TO G.
+     MOVE S TO G.
+     DISPLAY "A17C [" G "]".
+     MOVE 0 TO N.
+     COMPUTE N = 7 / N.
+     STOP RUN.

@@ -1,0 +1,35 @@
+ IDENTIFICATION DIVISION.
+ PROGRAM-ID. SCRN.
+* DISPLAY ERASE, ACCEPT FROM KEY, SET PREFIX and
+* ACCEPT FROM PREFIX (2026-11-11).  Keys: A then 7.
+* Expect: the first line gone, E1 at line 2 col 5,
+* K2 [A], K3 7, P1 [/COBOL/PROCS/], P2 [/COBOL/SRC/],
+* P3 [/COBOL/], P4 [] (9/ not set)
+ DATA DIVISION.
+ WORKING-STORAGE SECTION.
+ 01  K   PIC X.
+ 01  N   PIC 9.
+ 01  P   PIC X(30).
+ PROCEDURE DIVISION.
+ MAIN-PARA.
+     DISPLAY "THIS LINE MUST GO".
+     DISPLAY ERASE.
+     DISPLAY ERASE "E1 TOP" AT LINE 2 COLUMN 5.
+     DISPLAY " ".
+     DISPLAY "K1 PRESS A".
+     ACCEPT K FROM KEY.
+     DISPLAY "K2 [" K "]".
+     ACCEPT N FROM KEY.
+     DISPLAY "K3 " N.
+     SET PREFIX 3 TO "/cobol/procs".
+     ACCEPT P FROM PREFIX 3.
+     DISPLAY "P1 [" P "]".
+     MOVE "*/SRC" TO P.
+     SET PREFIX 4 TO P.
+     ACCEPT P FROM PREFIX 4.
+     DISPLAY "P2 [" P "]".
+     ACCEPT P FROM PREFIX 0.
+     DISPLAY "P3 [" P "]".
+     ACCEPT P FROM PREFIX 9.
+     DISPLAY "P4 [" P "]".
+     STOP RUN.

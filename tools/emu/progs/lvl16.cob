@@ -1,0 +1,31 @@
+ IDENTIFICATION DIVISION.
+ PROGRAM-ID. LVL16.
+* 16 groups open at once, the most there may be:
+* G16 HELLO / G1 HELLO / W HELLO (FIXLIST A21)
+ DATA DIVISION.
+ WORKING-STORAGE SECTION.
+ 01 G1.
+ 02 G2.
+ 03 G3.
+ 04 G4.
+ 05 G5.
+ 06 G6.
+ 07 G7.
+ 08 G8.
+ 09 G9.
+ 10 G10.
+ 11 G11.
+ 12 G12.
+ 13 G13.
+ 14 G14.
+ 15 G15.
+ 16 G16.
+ 17 LEAF PIC X(5) VALUE "HELLO".
+ 77 W PIC X(5).
+ PROCEDURE DIVISION.
+ MAIN-PARA.
+     DISPLAY "G1 [" G1 "]".
+     DISPLAY "G16 [" G16 "]".
+     MOVE G16 TO W.
+     DISPLAY "W [" W "]".
+     STOP RUN.

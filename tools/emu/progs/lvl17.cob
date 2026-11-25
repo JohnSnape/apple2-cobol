@@ -1,0 +1,33 @@
+ IDENTIFICATION DIVISION.
+ PROGRAM-ID. LVL17.
+* 17 groups open at once: error 51 at line 23, the
+* 17th group (FIXLIST A21, fixed 2026-11-22)
+ DATA DIVISION.
+ WORKING-STORAGE SECTION.
+ 01 G1.
+ 02 G2.
+ 03 G3.
+ 04 G4.
+ 05 G5.
+ 06 G6.
+ 07 G7.
+ 08 G8.
+ 09 G9.
+ 10 G10.
+ 11 G11.
+ 12 G12.
+ 13 G13.
+ 14 G14.
+ 15 G15.
+ 16 G16.
+ 17 G17.
+ 18 LEAF PIC X(5) VALUE "HELLO".
+ 77 W PIC X(5).
+ PROCEDURE DIVISION.
+ MAIN-PARA.
+     DISPLAY "G1 [" G1 "]".
+     DISPLAY "G16 [" G16 "]".
+     DISPLAY "G17 [" G17 "]".
+     MOVE G17 TO W.
+     DISPLAY "W [" W "]".
+     STOP RUN.

@@ -1,0 +1,32 @@
+# What stays off GitHub (the user's call, 2026-11-25: code and
+# manuals public, book material private).
+
+# ---- the books and their working notes ----
+chapters/
+GETTING-STARTED/
+*.indd
+OUTLINE.*
+CHAPTER-NOTES.*
+MANUALS-MAP.*
+HANDOFF.*
+STATUS.*
+BBASIC.*
+# the internal index points at the book; GitHub shows
+# .github/README.md instead
+/README.md
+/README.txt
+
+# ---- generated copies ----
+# the root .txt files are CR-ended copies of the .md files for
+# the Apple (tools/md2txt.js); MEMMAP.txt is an original
+/*.txt
+!/MEMMAP.txt
+
+# ---- build output and test leftovers ----
+build/
+tools/emu/*.png
+tools/emu/*-stage/
+tools/emu/print-*.txt
+*.po
+*.dsk
+*.2mg

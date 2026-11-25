@@ -1,0 +1,17 @@
+ IDENTIFICATION DIVISION.
+ PROGRAM-ID. CASEup.
+* no clause: UPPERCASE ONLY, the default. Type abc,
+* def and q: C2 [ABC  ] [DEF  ] [Q]
+ DATA DIVISION.
+ WORKING-STORAGE SECTION.
+ 77  A PIC X(5).
+ 77  B PIC X(5).
+ 77  K PIC X.
+ PROCEDURE DIVISION.
+ MAIN-PARA.
+     DISPLAY "C1 TYPE".
+     ACCEPT A.
+     ACCEPT B AT LINE 10 COLUMN 1.
+     ACCEPT K FROM KEY.
+     DISPLAY "C2 [" A "] [" B "] [" K "]".
+     STOP RUN.

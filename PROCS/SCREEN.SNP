@@ -1,0 +1,73 @@
+*    SCREEN - questions and answers      PROCS/SCREEN.SNP
+*    Place it with SA-P, P)rocedure, twice: D)ata in
+*    WORKING-STORAGE, P)aragraphs at the end.
+*    DISPLAY your question first, then:
+*      PERFORM SC-YES-NO      SC-ANSWER "Y" or "N";
+*                             y and n are taken too
+*      PERFORM SC-PRESS-KEY   wait for RETURN
+*      PERFORM SC-MENU-PICK   SC-CHOICE, 1 to SC-MAX
+*      PERFORM SC-GET-NUMBER  SC-NUMBER, from SC-LOW
+*                             to SC-HIGH
+*    Each one asks again, with a short message, until
+*    the answer is one it can use.  They use the
+*    scrolling console, not AT LINE: a position is a
+*    constant in the instruction, so a procedure that
+*    must work anywhere on the screen cannot hold one.
+*    Costs 14 of a program's 128 names and about
+*    150 of its 2,048 bytes of literals.
+*
+*    SCREEN - data (PROCS/SCREEN.SNP; the notes are there)
+ 77  SC-REPLY     PIC X.
+ 77  SC-ANSWER    PIC X.
+ 77  SC-CHOICE    PIC 99.
+ 77  SC-MAX       PIC 99.
+ 77  SC-PICK      PIC Z9.
+ 77  SC-NUMBER    PIC S9(7)V99.
+ 77  SC-LOW       PIC S9(7)V99.
+ 77  SC-HIGH      PIC S9(7)V99.
+ 77  SC-SHOW      PIC -(7)9.99.
+ 77  SC-SHOW2     PIC -(7)9.99.
+*
+*    SCREEN - the paragraphs
+ SC-YES-NO.
+     MOVE SPACE TO SC-ANSWER.
+     PERFORM UNTIL SC-ANSWER NOT = SPACE
+         ACCEPT SC-REPLY
+         IF SC-REPLY = "Y" OR "y"
+             MOVE "Y" TO SC-ANSWER
+         END-IF
+         IF SC-REPLY = "N" OR "n"
+             MOVE "N" TO SC-ANSWER
+         END-IF
+         IF SC-ANSWER = SPACE
+             DISPLAY "Please type Y or N"
+         END-IF
+     END-PERFORM.
+ SC-PRESS-KEY.
+     DISPLAY "Press RETURN to go on".
+     ACCEPT SC-REPLY.
+ SC-MENU-PICK.
+     MOVE 0 TO SC-CHOICE.
+     PERFORM UNTIL SC-CHOICE > 0
+         ACCEPT SC-CHOICE
+         IF SC-CHOICE > SC-MAX
+             MOVE 0 TO SC-CHOICE
+         END-IF
+         IF SC-CHOICE = 0
+             MOVE SC-MAX TO SC-PICK
+             DISPLAY "Please type a number from 1 to " SC-PICK
+         END-IF
+     END-PERFORM.
+ SC-GET-NUMBER.
+     MOVE "N" TO SC-ANSWER.
+     PERFORM UNTIL SC-ANSWER = "Y"
+         ACCEPT SC-NUMBER
+         IF SC-NUMBER < SC-LOW OR SC-NUMBER > SC-HIGH
+             MOVE SC-LOW TO SC-SHOW
+             MOVE SC-HIGH TO SC-SHOW2
+             DISPLAY "Please type a number from" SC-SHOW
+                 " to" SC-SHOW2
+         ELSE
+             MOVE "Y" TO SC-ANSWER
+         END-IF
+     END-PERFORM.

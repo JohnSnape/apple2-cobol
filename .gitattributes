@@ -1,0 +1,4 @@
+# Keep every byte as it is.  The sample programs are CR-terminated for
+# the Apple, and the Merlin sources must reach the disk unchanged.
+* -text
+*.S linguist-language=Assembly

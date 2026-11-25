@@ -1,0 +1,4 @@
+* MYREC - a plain copy book (no lone star), copied whole
+ 01  MY-REC.
+     05  MY-NAME    PIC X(10) VALUE "COPIED".
+     05  MY-NUM     PIC 99 VALUE 42.

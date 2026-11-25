@@ -1,0 +1,202 @@
+ IDENTIFICATION DIVISION.
+ PROGRAM-ID. FINANCE.
+*
+* A personal cheque register.  Same shape again -
+* relative file, menu, add / list - but this one
+* exists to exercise money.
+*
+* Every amount is COMP-3 packed decimal, and every
+* amount shown on screen goes through an edited
+* PICTURE.  Those are the two halves of the system
+* this program is really testing: the BCD pack
+* that adds without error, and the PICTURE engine
+* that makes the result readable.
+*
+ ENVIRONMENT DIVISION.
+ INPUT-OUTPUT SECTION.
+ FILE-CONTROL.
+     SELECT REG-FILE ASSIGN TO "REGISTER.DAT"
+         ORGANIZATION IS RELATIVE
+         ACCESS MODE IS DYNAMIC
+         RELATIVE KEY IS REG-KEY
+         FILE STATUS IS FILE-STAT.
+*
+ DATA DIVISION.
+ FILE SECTION.
+ FD  REG-FILE.
+ 01  REG-REC.
+     05  RR-DATE         PIC 9(6).
+     05  RR-PAYEE        PIC X(24).
+     05  RR-CATEGORY     PIC X(10).
+     05  RR-KIND         PIC X.
+         88  RK-DEPOSIT  VALUE "D".
+         88  RK-PAYMENT  VALUE "P".
+     05  RR-AMOUNT       PIC S9(6)V99 COMP-3.
+*
+ WORKING-STORAGE SECTION.
+ 01  REG-KEY             PIC 9(4) COMP.
+ 01  FILE-STAT           PIC XX.
+     88  STAT-OK         VALUE "00".
+ 01  WS-CHOICE           PIC X.
+ 01  WS-DONE             PIC X VALUE "N".
+     88  ALL-DONE        VALUE "Y".
+ 01  WS-EOF              PIC X VALUE "N".
+     88  END-OF-FILE     VALUE "Y".
+ 01  WS-LAST             PIC 9(4) COMP VALUE 0.
+ 01  WS-BALANCE          PIC S9(7)V99 COMP-3 VALUE 0.
+ 01  WS-CAT-TOTAL        PIC S9(7)V99 COMP-3 VALUE 0.
+ 01  WS-WANTED           PIC X(10).
+ 01  WS-SHOWN            PIC ZZZ9.
+ 01  WS-DATE-OUT         PIC 99/99/99.
+ 01  WS-MONEY            PIC $$$,$$9.99CR.
+ 01  WS-RUNNING          PIC $$,$$$,$$9.99CR.
+*
+ PROCEDURE DIVISION.
+ MAIN-PARA.
+     PERFORM OPEN-FILE.
+     PERFORM COUNT-RECS.
+     PERFORM UNTIL ALL-DONE
+         PERFORM SHOW-MENU
+         PERFORM GET-CHOICE
+         EVALUATE WS-CHOICE
+             WHEN "1" PERFORM ADD-ENTRY
+             WHEN "2" PERFORM LIST-ALL
+             WHEN "3" PERFORM SHOW-BALANCE
+             WHEN "4" PERFORM CATEGORY-TOTAL
+             WHEN "9" MOVE "Y" TO WS-DONE
+         END-EVALUATE
+     END-PERFORM.
+     CLOSE REG-FILE.
+     STOP RUN.
+*
+ OPEN-FILE.
+     OPEN I-O REG-FILE.
+     IF NOT STAT-OK
+         OPEN OUTPUT REG-FILE
+         CLOSE REG-FILE
+         OPEN I-O REG-FILE
+     END-IF.
+*
+ COUNT-RECS.
+     MOVE "N" TO WS-EOF.
+     MOVE 0 TO WS-LAST.
+     MOVE 1 TO REG-KEY.
+     START REG-FILE KEY NOT LESS THAN REG-KEY
+         INVALID KEY MOVE "Y" TO WS-EOF
+     END-START.
+     PERFORM UNTIL END-OF-FILE
+         READ REG-FILE NEXT RECORD
+             AT END MOVE "Y" TO WS-EOF
+         END-READ
+         IF NOT END-OF-FILE
+             MOVE REG-KEY TO WS-LAST
+         END-IF
+     END-PERFORM.
+*
+ SHOW-MENU.
+     DISPLAY " ".
+     DISPLAY "CHEQUE REGISTER".
+     DISPLAY " ".
+     DISPLAY "1) ADD AN ENTRY".
+     DISPLAY "2) LIST THE REGISTER".
+     DISPLAY "3) CURRENT BALANCE".
+     DISPLAY "4) TOTAL ONE CATEGORY".
+     DISPLAY "9) QUIT".
+     DISPLAY " ".
+*
+ GET-CHOICE.
+     DISPLAY "CHOICE? ".
+     ACCEPT WS-CHOICE.
+*
+ ADD-ENTRY.
+     MOVE SPACE TO REG-REC.
+     MOVE 0 TO RR-AMOUNT.
+     DISPLAY "DATE MMDDYY? ".
+     ACCEPT RR-DATE.
+     DISPLAY "PAYEE?       ".
+     ACCEPT RR-PAYEE.
+     DISPLAY "CATEGORY?    ".
+     ACCEPT RR-CATEGORY.
+     DISPLAY "D=DEPOSIT P=PAYMENT? ".
+     ACCEPT RR-KIND.
+     DISPLAY "AMOUNT?      ".
+     ACCEPT RR-AMOUNT.
+     ADD 1 TO WS-LAST.
+     MOVE WS-LAST TO REG-KEY.
+     WRITE REG-REC
+         INVALID KEY DISPLAY "COULD NOT WRITE"
+     END-WRITE.
+*
+* A payment reduces the balance, a deposit adds to
+* it.  Nothing here is subtle, which is the point:
+* the arithmetic is exact because it never leaves
+* packed decimal.
+ LIST-ALL.
+     MOVE 0 TO WS-BALANCE.
+     MOVE "N" TO WS-EOF.
+     MOVE 1 TO REG-KEY.
+     START REG-FILE KEY NOT LESS THAN REG-KEY
+         INVALID KEY MOVE "Y" TO WS-EOF
+     END-START.
+     PERFORM UNTIL END-OF-FILE
+         READ REG-FILE NEXT RECORD
+             AT END MOVE "Y" TO WS-EOF
+         END-READ
+         IF NOT END-OF-FILE
+             PERFORM POST-ONE
+             PERFORM SHOW-REC
+         END-IF
+     END-PERFORM.
+*
+ POST-ONE.
+     IF RK-PAYMENT
+         SUBTRACT RR-AMOUNT FROM WS-BALANCE
+     ELSE
+         ADD RR-AMOUNT TO WS-BALANCE
+     END-IF.
+*
+ SHOW-BALANCE.
+     MOVE 0 TO WS-BALANCE.
+     MOVE "N" TO WS-EOF.
+     MOVE 1 TO REG-KEY.
+     START REG-FILE KEY NOT LESS THAN REG-KEY
+         INVALID KEY MOVE "Y" TO WS-EOF
+     END-START.
+     PERFORM UNTIL END-OF-FILE
+         READ REG-FILE NEXT RECORD
+             AT END MOVE "Y" TO WS-EOF
+         END-READ
+         IF NOT END-OF-FILE
+             PERFORM POST-ONE
+         END-IF
+     END-PERFORM.
+     MOVE WS-BALANCE TO WS-RUNNING.
+     DISPLAY "BALANCE: " WS-RUNNING.
+*
+ CATEGORY-TOTAL.
+     DISPLAY "CATEGORY? ".
+     ACCEPT WS-WANTED.
+     MOVE 0 TO WS-CAT-TOTAL.
+     MOVE "N" TO WS-EOF.
+     MOVE 1 TO REG-KEY.
+     START REG-FILE KEY NOT LESS THAN REG-KEY
+         INVALID KEY MOVE "Y" TO WS-EOF
+     END-START.
+     PERFORM UNTIL END-OF-FILE
+         READ REG-FILE NEXT RECORD
+             AT END MOVE "Y" TO WS-EOF
+         END-READ
+         IF NOT END-OF-FILE AND RR-CATEGORY = WS-WANTED
+             ADD RR-AMOUNT TO WS-CAT-TOTAL
+         END-IF
+     END-PERFORM.
+     MOVE WS-CAT-TOTAL TO WS-MONEY.
+     DISPLAY "TOTAL FOR " WS-WANTED ": " WS-MONEY.
+*
+ SHOW-REC.
+     MOVE REG-KEY TO WS-SHOWN.
+     MOVE RR-DATE TO WS-DATE-OUT.
+     MOVE RR-AMOUNT TO WS-MONEY.
+     MOVE WS-BALANCE TO WS-RUNNING.
+     DISPLAY WS-SHOWN " " WS-DATE-OUT " " RR-PAYEE.
+     DISPLAY "     " RR-CATEGORY " " WS-MONEY " " WS-RUNNING.
