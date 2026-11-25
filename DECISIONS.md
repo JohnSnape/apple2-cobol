@@ -716,3 +716,34 @@ COBOLOS DECISIONS 6.15 and 6.16 have the detail.
 - **The test:** on `COBOL800PD.po`, ESC kept the file in DELETE, left
   RENAME and RUN without going on, and RETURN still deleted.
 - **Not on `COBOL32.po`.** It goes on with 8.11, 8.14 and 8.15.
+
+### 8.18 On GitHub as JohnSnape/apple2-cobol **(user)**
+
+The user asked on 2026-11-25 for this tree to go on GitHub, as SP COBOL
+had, and made these four calls:
+- **Only this tree.** COBOL.OS stays private for now. If it follows, its
+  name will be `cobol-os`.
+- **Code and manuals only.** The source, the tools, `MANUAL/` and the
+  design documents are public. These stay private through `.gitignore`:
+  - the book: `chapters/`, `GETTING-STARTED/`, the InDesign files,
+    `OUTLINE`, `CHAPTER-NOTES` and `MANUALS-MAP`;
+  - the working notes `HANDOFF` and `STATUS`;
+  - `BBASIC`;
+  - the internal `README`.
+- **No disk images.** There is no release. Anyone who wants it builds it
+  and supplies ProDOS 8 themselves.
+- **The licence is MIT.**
+
+How it is set up:
+- **The public README is `.github/README.md`.** GitHub shows it in place
+  of the internal one, which is left alone.
+- **`.gitattributes` sets `* -text`**, so every byte is kept, including
+  the sample programs' CR endings.
+- **These are left out too:** `build/`, the test screenshots and the
+  stage folders, the root `.txt` copies (except `MEMMAP.txt`), and every
+  disk image.
+- **Commits are by "John Snape"**, through the GitHub noreply address,
+  as for SP COBOL.
+- **The folder is now a git repo**, with `main` tracking `origin`.
+- **New work is not public until it is committed and pushed.** Neither
+  is `COBOL32.po`.
