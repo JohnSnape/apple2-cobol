@@ -721,8 +721,11 @@ COBOLOS DECISIONS 6.15 and 6.16 have the detail.
 
 The user asked on 2026-11-25 for this tree to go on GitHub, as SP COBOL
 had, and made these four calls:
-- **Only this tree.** COBOL.OS stays private for now. If it follows, its
-  name will be `cobol-os`.
+- **Only this tree.** COBOL.OS was to stay private for now. **Changed
+  the same day:** the user asked for the kernel to have a repository of
+  its own, so that others can use it in their own projects. It is
+  `JohnSnape/cobol-os`, kernel only (COBOLOS DECISIONS 6.17). The
+  COBOL.OS build of this system is still not published.
 - **Code and manuals only.** The source, the tools, `MANUAL/` and the
   design documents are public. These stay private through `.gitignore`:
   - the book: `chapters/`, `GETTING-STARTED/`, the InDesign files,
