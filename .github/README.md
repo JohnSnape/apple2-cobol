@@ -39,7 +39,7 @@ lists every keyword and whether it works yet.
 
 | | |
 |---|---|
-| Computer | An enhanced Apple IIe (65C02), IIc or IIGS. The system checks for the 65C02 when it starts. |
+| Computer | An enhanced Apple IIe (65C02). The system checks for the 65C02 when it starts. It hasn't been tried on a IIc or IIGS. |
 | Memory | 128K. Extra auxiliary memory, such as a RamWorks card, is used when it's there. |
 | Display | 80 columns |
 | Disk | ProDOS 8. The system fits on an 800K disk; a hard-disk volume leaves room for your work. |

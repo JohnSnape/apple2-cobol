@@ -93,4 +93,5 @@ pass added `a2.cob`, `a14.cob`, `a15.cob` and the `e36`/`e38` compile errors.
   KEYWORDS.md, and check it against the compiler's output. It becomes a
   manual appendix.
 - The reference manual (MANUAL/): chapters 3–7, front matter and appendices
-  once list A is fixed; CH01 must not claim the IIc or IIGS.
+  once list A is fixed. ~~CH01 must not claim the IIc or IIGS~~ — **done
+  2026-11-25**, and the GitHub README no longer claims them either.
