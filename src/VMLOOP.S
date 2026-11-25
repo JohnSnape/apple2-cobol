@@ -47,7 +47,12 @@ VMEND9 RTS
 * STOP RUN or by a fault, closes any file the
 * program left open, so it cannot leak into the
 * next one.
-VFINIT LDX #31
+* It also clears CGWARN, CONGETLN's beep point: the
+* VM sets it only for a file name (DECISIONS 8.11),
+* so a value left at $0E7D from before the run made
+* a plain ACCEPT beep (2026-11-25, the user's yes)
+VFINIT STZ CGWARN
+ LDX #31
 VFI1 STZ RMFCB0,X
  DEX
  BPL VFI1

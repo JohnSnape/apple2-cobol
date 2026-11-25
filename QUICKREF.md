@@ -247,8 +247,8 @@ All of it is exact decimal. There is no floating point and none is coming.
 | `DISPLAY ... AT LINE n COLUMN n` | ✔ | positioned, never scrolls |
 | `DISPLAY ... UPON CONSOLE` | ✔ | the screen — the same as no `UPON` |
 | `DISPLAY ... UPON PRINTER` | ✔ | `$88`/`$89`; one printer, the slot set in Utilities. Any other word after `UPON` also means the printer. Every operand goes to the printer, sixteen at most before the last (more is error 13) — until 2026-11-22 only the **last** did, and the rest went to the screen (FIXLIST A22) |
-| `ACCEPT` field | ✔ | |
-| `ACCEPT ... AT LINE n COLUMN n` | ✔ | |
+| `ACCEPT` field | ✔ | Into a file name (an item a `SELECT` names in `ASSIGN TO`): 64 characters at most, with a beep on each of the last seven (2026-11-25) |
+| `ACCEPT ... AT LINE n COLUMN n` | ✔ | Into a file name: 64 characters at most, no beep |
 | `ACCEPT ... FROM DATE / TIME` | ✔ | `$85` |
 | `ACCEPT ... FROM DAY` | ✘ | not built yet |
 | `ACCEPT ... FROM KEY` | ✔ | one keystroke, not shown, as typed. A digit into a number is its value (2026-11-11) |

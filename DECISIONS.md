@@ -572,9 +572,53 @@ reasons.
   the tools choosing the file's name, not a mend of a bad one.
 - Tests: `progs/badnm.cob` (B1-B10) and `badnames.ps1` (every tool).
 
-### 8.12 An offshoot on an OS of our own (user, 2026-11-22)
+### 8.11 An ACCEPT into a file name takes 64 characters and warns (user, 2026-11-22)
 
-(8.11 is reserved for the file-name ACCEPT, written when it is tested.)
+Built 2026-11-22 at the user's request; tested and deployed 2026-11-25
+(8.19).
+- **What it does:** an `ACCEPT` into an item that a `SELECT` names in
+  `ASSIGN TO` takes at most 64 characters, ProDOS's whole pathname,
+  however wide the item. It beeps on each of the last seven, so the
+  operator hears the name getting long. At 64 the keys stop taking;
+  RETURN, ESC and DELETE still work. A narrower item keeps its own
+  width, and the beep is on its last seven. `ACCEPT ... AT` gets the
+  64 cap but no beep. Any other `ACCEPT` is unchanged.
+- **The trigger is the `ASSIGN TO` item (my choice).** The compiler
+  knows which items name files, so the program needs no new syntax.
+- **How:**
+  - the compiler puts a new opcode, `$99 FNAME`, in front of such an
+    `ACCEPT` (CMPPROC4 `PDAFN`);
+  - the VM takes it at the start of both ACCEPT handlers and clears it,
+    so it can't be left over for a later ACCEPT;
+  - CONGETLN beeps past `CGWARN` (`$0E7D`), which the VM sets for the
+    one line and clears after.
+- **Changed:** CONSOLE.S, EQUATES2.S, VMSCRN.S, VMTAIL.S, CMPCON.S,
+  CMPPROC4.S, `tools/pdis.js` and PCODE.md. COBOL.LIB has 2 bytes left
+  below `$6000`.
+- **The test** (`progs/fnacc.cob`, on `COBOL32.po`, 2026-11-25):
+  - 70 characters typed into a file name kept the first 64;
+  - 70 typed into another item kept all 70;
+  - `3/FN3.DAT`, a prefix name, opened with "00";
+  - `/cobol/fn3.dat`, a full path in lower case, read back "00 HELLO";
+  - `9/X.DAT`, an unset prefix, gave "31" (8.10).
+
+  **The beep was not heard:** the test reads the screen.
+- **Found at the deploy, fixed the same day (the user's yes): `CGWARN`
+  was not cleared when a run started.**
+  - `VFINIT` cleared the record-manager slots `$0E50`–`$0E6F` but not
+    `$0E7D`, and a plain ACCEPT leaves the flag as it finds it. So until
+    the first file-name ACCEPT, a leftover value there made a plain
+    ACCEPT beep on its last characters. It was only a beep; the cap is
+    set separately each time.
+  - `VFINIT` now starts with `STZ CGWARN` (VMLOOP.S), and VM is 3 bytes
+    longer, with 1,065 to spare. VMLOOP.S is identical in both trees,
+    and both builds' VM objects are the same.
+  - It was deployed with `deploy.ps1 -Src VMLOOP -Obj VM`. The
+    `COBOL32.po` test of 8.19 was run again with the same results, and
+    both 800K disks were rebuilt. No test can hear the beep, so the
+    clear is proved by the code: VMCORE calls `VFINIT` before every run.
+
+### 8.12 An offshoot on an OS of our own (user, 2026-11-22)
 
 The user wants a COBOL offshoot running on our own OS in the language
 card, the way ProDOS sits there. The user chose a new small kernel
@@ -604,10 +648,11 @@ the prefixes at `$BD00`, and that is COBOL.OS's block buffer.
   Only COBOL.SYSTEM changed, from 2,201 to 2,293 bytes.
 - **The COBOL.OS build** has the mirror-image test (its DECISIONS
   6.1, 6.7).
-- **Not yet deployed to `COBOL32.po`.** The disk is waiting on 8.11's
-  test anyway. `deploy.ps1 -Obj COBOLSYS` puts it there.
-- **Not yet run.** It is to be tested in AppleWin on a COBOL.OS disk
-  carrying this build.
+- **Deployed 2026-11-25 (8.19)**, inside the same COBOL.SYSTEM as
+  8.17.
+- **Tested 2026-11-24/25:** it refuses on COBOL.OS disks, on 32 MB and
+  on 800K (COBOLOS DECISIONS 6.14, 6.15), and it lets the ProDOS build
+  start on `COBOL32.po`.
 
 
 ### 8.14 DELETE erases in every one-line input (user, 2026-11-24)
@@ -650,8 +695,9 @@ both builds.
   - The lesson: before deploying LIB, compare the disk's COBOL.LIB
     with the build from before the change. If they differ, the build
     is carrying something else.
-- **Not yet run under ProDOS.** The COBOL.OS side's
-  `tools/suite/deltest.ps1` tests the same routines.
+- **Deployed with 8.11 on 2026-11-25 (8.19)**, and run under ProDOS on
+  `COBOL32.po`. DELETE erased in FORMAT, at Utilities' "Rename which?",
+  and in both kinds of ACCEPT.
 
 ### 8.15 Command letters are folded everywhere (user, 2026-11-24)
 
@@ -684,7 +730,8 @@ Most dispatchers already folded with `AND #$DF`. The user said fix them.
   - **Not tested:** the lowercase Open-Apple commands. AppleWin sends
     Alt-letter as a capital while its Caps Lock is down, which is how
     the tests run.
-- **Not yet deployed.** It goes on with 8.11 and 8.14 (HANDOFF).
+- **Deployed 2026-11-25 (8.19).** On `COBOL32.po`, a lowercase `a` at
+  FORMAT's type question added the field.
 
 ### 8.16 The system on 800K disks **(user)**
 
@@ -695,8 +742,9 @@ COBOLOS DECISIONS 6.14 has the detail.
 - **The test:** in AppleWin on 2026-11-24 it booted, catalogued, and ran
   FORMAT. DELETE erased in FORMAT and in an ACCEPT, and FINANCE compiled,
   ran and wrote its file.
-- **8.11 is on it untested.** This build's LIB and COMPILE2 include 8.11,
-  so the disk carries code that is not yet on `COBOL32.po`.
+- **8.11 was on it before it was tested.** This build's LIB and COMPILE2
+  include 8.11. It has been tested and is on `COBOL32.po` since
+  2026-11-25 (8.19).
 
 ### 8.17 ESC cancels a typed name **(user)**
 
@@ -715,7 +763,8 @@ COBOLOS DECISIONS 6.15 and 6.16 have the detail.
   UTILITIES 2,778, both +2 and both under their ceilings.
 - **The test:** on `COBOL800PD.po`, ESC kept the file in DELETE, left
   RENAME and RUN without going on, and RETURN still deleted.
-- **Not on `COBOL32.po`.** It goes on with 8.11, 8.14 and 8.15.
+- **Deployed 2026-11-25 (8.19).** On `COBOL32.po`, ESC at "Rename
+  which?" went back to Utilities without asking "New name?".
 
 ### 8.18 On GitHub as JohnSnape/apple2-cobol **(user)**
 
@@ -750,3 +799,35 @@ How it is set up:
 - **The folder is now a git repo**, with `main` tracking `origin`.
 - **New work is not public until it is committed and pushed.** Neither
   is `COBOL32.po`.
+
+### 8.19 Deployed: 8.11, 8.13, 8.14, 8.15 and 8.17 **(user)**
+
+On 2026-11-25 the user said to deploy 8.11, 8.14, 8.15 and 8.17 to
+`COBOL32.po`. 8.13, the start-up guard, went with them: it lives in the
+same COBOL.SYSTEM as 8.17, and it had been tested.
+- **Backups:**
+  - `COBOL32.before-8.11.po` is the disk as it was before;
+  - `deploy.ps1` also refreshed `COBOL32.backup.po`.
+- **The deploy:**
+  - **Sources:** `-Src VMSCRN,VMTAIL,CMPCON,CMPPROC4,EQUATES2,SYSBOOT,
+    TEXTDRV,CONSOLE,DSCREEN,SCRINP,PROMPT,FORMATD,RPTENT,SYSUTIL,UTILD`.
+    That is every source changed since the 8.10 deploy, checked against
+    the file dates.
+  - **Objects:** `-Obj LIB,VM,COMPILE2,FORMAT,QUERY,REPORT,COBOLSYS,UTIL`.
+    These are the eight objects that differed from the build. COBOL.AUX,
+    EDIT and COMPILE1 were already the same.
+  - **Afterwards:** all eleven system files on the disk match
+    `build/obj` byte for byte, and cp2's `test` finds no failures.
+- **The test, in AppleWin on `COBOL32.po`:**
+  - it booted to the menu, "9) Exit to ProDOS" (8.13);
+  - FORMAT: "1X" then DELETE left "1" (8.14), and a lowercase "a" at the
+    type question added the field (8.15);
+  - Utilities 4: "SKEL.COBX" then DELETE left "SKEL.COB", and ESC
+    cancelled (8.14, 8.17);
+  - `caseup.cob`: DELETE in ACCEPT and ACCEPT ... AT, ending
+    `C2 [ABC  ] [DEF  ] [Q]` (8.14);
+  - `fnacc.cob`: everything 8.11 lists.
+
+  The test files were deleted afterwards, leaving the disk as deployed.
+- **Not run again:** the full regression (`suite.ps1`, `a26run.ps1`).
+  The COBOL.OS suite ran the same sources overnight on 2026-11-24/25.

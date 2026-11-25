@@ -215,17 +215,15 @@ The five routines are `TDGETLN` (`GETLN80`), `CONGETLN`, `DSACC`, SCRINP's
 
 - **DELETE is new.** Until 2026-11-24 all five routines threw it away, while
   EDIT took it as erase-left.
-  - The change is in the source and the build. It is **not yet on
-    `COBOL32.po`**: it goes on with 8.11, whose part of COBOL.LIB is not
-    tested yet. Until then the disk's copy still ignores DELETE in these
-    routines.
+  - It is on `COBOL32.po` since 2026-11-25 (DECISIONS 8.19).
   - The COBOL.OS build has the same change (its DECISIONS 6.12).
 - **ESC after a typed file name** in Utilities, and in RUN's question,
   used to act as RETURN. So ESC at "DELETE a file" deleted the file.
-  - It now cancels (DECISIONS 8.17, 2026-11-25), in the source and in
-    both builds.
-  - It is not yet on `COBOL32.po`, so the disk's copy still has the bug.
-    There, clear the name with ←, then press ESC.
+  It now cancels (DECISIONS 8.17), in both builds and on `COBOL32.po`
+  since 2026-11-25.
+- **An `ACCEPT` into a file name** (an item a `SELECT` names in
+  `ASSIGN TO`) takes 64 characters at most, and beeps on each of the last
+  seven (DECISIONS 8.11).
 - **A plain `ACCEPT` folds letters to capitals** unless the program says
   `ANYCASE`.
 - **A screen form's yes/no field** takes Y or N only, in either case.
